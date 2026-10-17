@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Punchline Duel — Host</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥊</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Bungee&family=Bungee+Shade&display=swap">
+  <link rel="stylesheet" href="/shared/base.css">
+  <link rel="stylesheet" href="/host.css">
+  <!-- type="module" lets us use import/export, and runs after the HTML is parsed. -->
+  <script type="module" src="/host.js"></script>
+</head>
+<body class="host">
+  <!-- Decorative background: rotating spotlight rays + red/blue corner glows. -->
+  <div class="backdrop" aria-hidden="true">
+    <div class="rays"></div>
+    <div class="glow glow-red"></div>
+    <div class="glow glow-blue"></div>
+  </div>
+
+  <header class="host-bar" id="bar">
+    <div class="brand" id="brand"><span>Punchline</span> <span>Duel</span></div>
+    <div class="bar-room" id="bar-room"></div>
+    <div class="bar-right">
+      <div class="timer" id="timer" hidden>
+        <span class="timer-num" id="timer-num"></span>
+      </div>
+      <button class="icon-button" id="mute" type="button" aria-label="Sound on">🔊</button>
+    </div>
+  </header>
+
+  <main class="stage" id="stage">
+    <section class="center-message">
+      <h1 class="giant">Warming up the lights…</h1>
+    </section>
+  </main>
+
+  <footer class="roster" id="roster" hidden></footer>
+
+  <div class="conn-banner" id="conn" hidden>Reconnecting to the server…</div>
+</body>
+</html>

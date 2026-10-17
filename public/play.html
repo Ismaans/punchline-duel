@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <!--
+    maximum-scale=1 + user-scalable=no: no pinch/double-tap zoom.
+    interactive-widget=resizes-content: on Android, the page shrinks when the
+    keyboard opens instead of the keyboard covering the text box.
+  -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+  <meta name="theme-color" content="#0d0b1f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Punchline Duel</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥊</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Bungee&display=swap">
+  <link rel="stylesheet" href="/shared/base.css">
+  <link rel="stylesheet" href="/play.css">
+  <script type="module" src="/play.js"></script>
+</head>
+<body>
+  <header class="topbar" id="topbar" hidden>
+    <div class="topbar-me" id="me"></div>
+    <div class="topbar-right">
+      <span class="timer-pill" id="timer" hidden></span>
+      <button class="icon-button" id="mute" type="button" aria-label="Sound on">🔊</button>
+    </div>
+    <div class="progress" aria-hidden="true"><div class="progress-fill" id="progress"></div></div>
+  </header>
+
+  <!-- play.js swaps the contents of #screen. It always shows something. -->
+  <main class="screen" id="screen">
+    <section class="screen-center">
+      <div class="big-emoji">🥊</div>
+      <h2 class="big-title">Loading…</h2>
+    </section>
+  </main>
+
+  <div class="conn-banner" id="conn" hidden>Reconnecting…</div>
+
+  <noscript><p style="padding:2rem">Punchline Duel needs JavaScript turned on.</p></noscript>
+</body>
+</html>

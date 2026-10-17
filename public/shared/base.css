@@ -1,0 +1,278 @@
+/*
+ * shared/base.css — the "Fight Night" look shared by the host screen and phones.
+ *
+ * Idea: every matchup is a boxing poster. Red corner vs. blue corner,
+ * cream "paper" cards with thick ink outlines and hard offset shadows,
+ * a gold accent, and halftone dots like old printed posters.
+ *
+ * Fonts (loaded from Google Fonts in each HTML file):
+ *   Bungee              → chunky marquee display type (titles, codes, numbers)
+ *   Bricolage Grotesque → characterful but very readable text (prompts, answers)
+ */
+
+:root {
+  --ink: #0d0b1f;
+  --ink-2: #17133a;
+  --ink-3: #241d55;
+  --paper: #fff6e0;
+  --paper-2: #f3e6c4;
+  --text: #fff6e0;
+  --muted: #a39cd6;
+
+  --red: #ff3b5c; /* red corner (answer A) */
+  --blue: #1fb6ff; /* blue corner (answer B) */
+  --gold: #ffd23f;
+  --green: #3ddc97;
+
+  --font-display: 'Bungee', 'Impact', system-ui, sans-serif;
+  --font-body: 'Bricolage Grotesque', 'Trebuchet MS', system-ui, sans-serif;
+
+  --radius: 18px;
+  --outline: 3px solid var(--ink);
+  --shadow-hard: 6px 6px 0 var(--ink);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Halftone dots, layered on top of backgrounds. */
+  --halftone: radial-gradient(rgba(255, 255, 255, 0.07) 1.2px, transparent 1.6px);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--ink);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-optical-sizing: auto;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 400; /* Bungee only has one weight */
+  letter-spacing: 0.01em;
+  line-height: 1.05;
+}
+
+p {
+  margin: 0;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---------- Buttons: chunky "sticker" style ---------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  min-height: 56px;
+  padding: 0.6em 1.4em;
+  border: var(--outline);
+  border-radius: 14px;
+  background: var(--gold);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  box-shadow: 4px 4px 0 var(--ink);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s var(--ease-out), box-shadow 0.12s var(--ease-out), opacity 0.2s;
+}
+
+.btn:hover:not(:disabled) {
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0 var(--ink);
+}
+
+.btn:active:not(:disabled) {
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 3px;
+}
+
+.btn-red {
+  background: var(--red);
+  color: var(--paper);
+}
+
+.btn-blue {
+  background: var(--blue);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text);
+  border-color: currentColor;
+  box-shadow: none;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  box-shadow: none;
+}
+
+/* ---------- Avatars ---------- */
+
+.avatar {
+  --size: 2.5em;
+  display: inline-grid;
+  place-items: center;
+  width: var(--size);
+  height: var(--size);
+  flex: none;
+  border-radius: 50%;
+  background: var(--player-color, var(--muted));
+  border: 3px solid var(--ink);
+  box-shadow: 0 0 0 3px var(--player-color, var(--muted)), 3px 3px 0 3px var(--ink);
+  font-size: 1em;
+  line-height: 1;
+  /* The emoji itself */
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+}
+
+.player-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  font-weight: 800;
+  color: var(--player-color);
+}
+
+.player-tag .avatar {
+  --size: 1.8em;
+  font-size: 0.9em;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+.is-offline {
+  opacity: 0.35;
+  filter: grayscale(0.8);
+}
+
+/* ---------- Paper card ---------- */
+
+.paper {
+  background: var(--paper);
+  color: var(--ink);
+  border: var(--outline);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-hard);
+}
+
+/* ---------- Toast ---------- */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: max(1.25rem, env(safe-area-inset-bottom));
+  z-index: 100;
+  max-width: min(92vw, 34rem);
+  padding: 0.8rem 1.2rem;
+  border: var(--outline);
+  border-radius: 14px;
+  background: var(--paper);
+  color: var(--ink);
+  font-weight: 700;
+  box-shadow: 4px 4px 0 var(--ink);
+  text-align: center;
+  transform: translate(-50%, 200%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.toast.is-error {
+  background: var(--red);
+  color: var(--paper);
+}
+
+.toast.is-visible {
+  animation: toast 3.2s var(--ease-out) forwards;
+}
+
+@keyframes toast {
+  0% { transform: translate(-50%, 200%); opacity: 0; }
+  8%, 88% { transform: translate(-50%, 0); opacity: 1; }
+  100% { transform: translate(-50%, 0); opacity: 0; }
+}
+
+/* ---------- Shared animations ---------- */
+
+@keyframes pop-in {
+  0% { transform: scale(0.4); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes rise-in {
+  from { transform: translateY(30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes bob {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50% { transform: translateY(-10px) rotate(3deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0) rotate(0); }
+  20% { transform: translateX(-8px) rotate(-2deg); }
+  40% { transform: translateX(8px) rotate(2deg); }
+  60% { transform: translateX(-6px) rotate(-1deg); }
+  80% { transform: translateX(6px) rotate(1deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
