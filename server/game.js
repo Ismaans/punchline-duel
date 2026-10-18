@@ -73,6 +73,7 @@ export function createGameState({ speed = 1 } = {}) {
     usedPromptIds: [], // across every game in this room
     gamePromptIds: [], // just this game (never reused within one game)
     pairHistory: [], // "a|b" pairs who faced off already this game
+    answerHistory: [], // every voted-on answer this game, for the winner screen (see recordAnswers)
     round: null, // rounds 1 and 2 (see startRound)
     final: null, // final round (see startFinal)
   };
@@ -348,6 +349,7 @@ function resetForNewGame(state) {
   state.final = null;
   state.pairHistory = [];
   state.gamePromptIds = [];
+  state.answerHistory = [];
 }
 
 function startNewGame(state, ctx) {
@@ -507,6 +509,20 @@ function revealMatchup(state, ctx) {
   matchup.authorIds.forEach((id, i) => {
     findPlayer(state, id).score += score.points[i];
   });
+  const totalVotes = voterIds[0].length + voterIds[1].length;
+  recordAnswers(
+    state,
+    matchup.answers.map((text, i) => ({
+      round: state.round.number,
+      promptText: matchup.promptText,
+      text,
+      authorId: matchup.authorIds[i],
+      votes: voterIds[i].length,
+      totalVotes,
+      kind: score.kind,
+      sweep: score.sweep === i,
+    })),
+  );
 
   state.round.step = 'reveal';
   setStep(state, DURATIONS.MATCHUP_REVEAL, ctx);
@@ -642,7 +658,93 @@ function enterGameOver(state, ctx) {
   for (const result of state.final.results) {
     findPlayer(state, result.authorId).score += result.points;
   }
+  const totalVotes = state.final.results.reduce((sum, r) => sum + r.votes, 0);
+  recordAnswers(
+    state,
+    state.final.results.map((r) => ({
+      round: 3,
+      promptText: state.final.prompt.text,
+      text: r.text,
+      authorId: r.authorId,
+      votes: r.votes,
+      totalVotes,
+      kind: 'final',
+      sweep: false,
+    })),
+  );
   goTo(state, P.GAME_OVER, null, ctx);
+}
+
+function recordAnswers(state, entries) {
+  state.answerHistory.push(...entries.filter((e) => e.text !== null));
+}
+
+// ---------------------------------------------------------------------------
+// Winner screen highlights
+// ---------------------------------------------------------------------------
+
+export const HIGHLIGHTS = Object.freeze({ PER_TYPE: 4, PER_AUTHOR: 2 });
+
+/**
+ * Picks the game's best and worst answers for the winner screen, alternating
+ * best, worst, best, worst… Best answers won their matchup (or tied for the
+ * most final-round votes); worst answers lost theirs. Answers nobody could
+ * vote on (Mind Melds, forfeits, matchups with no votes) are left out.
+ *
+ * Each type takes the top answer from every round first, so all rounds show
+ * up when they can, then fills up by overall ranking. No player appears more
+ * than PER_AUTHOR times per type, and no answer is both best and worst.
+ *
+ * @param history  state.answerHistory
+ * @param playerIds  players still in the game (others are skipped)
+ * @returns [{ type: 'best' | 'worst', round, promptText, text, authorId, votes, totalVotes, sweep }]
+ */
+export function pickHighlights(history, playerIds) {
+  const present = new Set(playerIds);
+  const candidates = history.filter(
+    (e) => ['normal', 'final'].includes(e.kind) && e.totalVotes > 0 && present.has(e.authorId),
+  );
+  const share = (e) => e.votes / e.totalVotes;
+  const topFinalVotes = Math.max(0, ...candidates.filter((e) => e.kind === 'final').map((e) => e.votes));
+  const won = (e) => (e.kind === 'final' ? e.votes === topFinalVotes : e.votes * 2 > e.totalVotes);
+  const lost = (e) => (e.kind === 'final' ? e.votes < topFinalVotes : e.votes * 2 < e.totalVotes);
+  const best = choose(
+    candidates.filter(won).sort((a, b) => b.sweep - a.sweep || share(b) - share(a) || b.votes - a.votes),
+    new Set(),
+  );
+  const worst = choose(
+    candidates.filter(lost).sort((a, b) => share(a) - share(b) || a.votes - b.votes),
+    new Set(best),
+  );
+  const out = [];
+  for (let i = 0; i < Math.max(best.length, worst.length); i++) {
+    if (best[i]) out.push(highlight('best', best[i]));
+    if (worst[i]) out.push(highlight('worst', worst[i]));
+  }
+  return out;
+}
+
+/** Up to PER_TYPE entries from a ranked list: each round's top entry first, then the rest. */
+function choose(ranked, exclude) {
+  const chosen = [];
+  const perAuthor = new Map();
+  const take = (e) => {
+    if (chosen.length >= HIGHLIGHTS.PER_TYPE || exclude.has(e) || chosen.includes(e)) return;
+    if ((perAuthor.get(e.authorId) ?? 0) >= HIGHLIGHTS.PER_AUTHOR) return;
+    chosen.push(e);
+    perAuthor.set(e.authorId, (perAuthor.get(e.authorId) ?? 0) + 1);
+  };
+  for (const round of [1, 2, 3]) {
+    const top = ranked.find((e) => e.round === round && !exclude.has(e) && (perAuthor.get(e.authorId) ?? 0) < HIGHLIGHTS.PER_AUTHOR);
+    if (top) take(top);
+  }
+  ranked.forEach(take);
+  // Show the ones picked by ranking in ranked order, not round order.
+  return chosen.sort((a, b) => ranked.indexOf(a) - ranked.indexOf(b));
+}
+
+function highlight(type, { round, promptText, text, authorId, votes, totalVotes, sweep }) {
+  return { type, round, promptText, text, authorId, votes, totalVotes, sweep };
 }
 
 // ---------------------------------------------------------------------------
@@ -801,7 +903,17 @@ export function viewFor(state, viewer) {
       break;
 
     case P.GAME_OVER:
-      view.gameOver = { standings: standings(state.players) };
+      view.gameOver = {
+        standings: standings(state.players),
+        // Only the host screen shows these, so phones don't need them.
+        highlights:
+          viewer.role === 'host'
+            ? pickHighlights(
+                state.answerHistory,
+                state.players.map((p) => p.id),
+              )
+            : [],
+      };
       break;
   }
   return view;
