@@ -1391,6 +1391,104 @@ body.host {
   color: var(--gold);
 }
 
+/* The highlight cards share the column, so the hero shrinks to keep 1080p on one screen. */
+.champion.has-highlights {
+  gap: 2vh;
+}
+
+.champion.has-highlights .champ {
+  gap: 1vh;
+}
+
+.champion.has-highlights .champ-belt {
+  font-size: clamp(36px, 3.2vw, 68px);
+}
+
+.champion.has-highlights .avatar-hero {
+  --size: clamp(96px, 8vw, 160px);
+  font-size: clamp(52px, 4.4vw, 88px);
+}
+
+.champion.has-highlights .champ-name {
+  font-size: clamp(36px, 4vw, 84px);
+}
+
+.highlight-slot {
+  width: min(100%, 760px);
+  min-height: clamp(190px, 24vh, 300px);
+}
+
+.highlight {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2vh;
+  padding: 2vh 1.8vw;
+  text-align: left;
+  border-top: 10px solid var(--gold);
+  animation: highlight-in 0.6s var(--ease-bounce) both;
+}
+
+.highlight.is-worst {
+  border-top-color: var(--red);
+}
+
+.highlight-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1vw;
+}
+
+.highlight-label {
+  font-family: var(--font-display);
+  font-size: clamp(20px, 1.7vw, 34px);
+}
+
+.highlight-count {
+  font-size: clamp(14px, 1vw, 20px);
+  opacity: 0.6;
+}
+
+.highlight-prompt {
+  margin: 0;
+  font-size: clamp(16px, 1.25vw, 26px);
+  opacity: 0.8;
+}
+
+.highlight-round {
+  margin-right: 0.6em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.highlight-text {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(24px, 2.2vw, 46px);
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.highlight-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1vw;
+  font-size: clamp(16px, 1.2vw, 24px);
+}
+
+.highlight-votes {
+  font-family: var(--font-display);
+}
+
+@keyframes highlight-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px) rotate(-1.5deg) scale(0.96);
+  }
+}
+
 .over-side {
   display: flex;
   flex-direction: column;

@@ -925,6 +925,16 @@ function gameOverScreen(s) {
   later(1600, () => confetti({ count: 160, x: 0.5, y: 0.6 }));
   later(3200, () => confettiCannons());
 
+  const highlights = s.gameOver.highlights ?? [];
+  const highlightSlot = h('div.highlight-slot', { 'aria-live': 'polite' });
+  if (highlights.length > 0) later(1500, () => showHighlight(0));
+
+  /** Shows highlight `i`, then the next one every HIGHLIGHT_MS, looping. */
+  function showHighlight(i) {
+    highlightSlot.replaceChildren(highlightCard(s, highlights[i], i, highlights.length));
+    if (highlights.length > 1) later(HIGHLIGHT_MS, () => showHighlight((i + 1) % highlights.length));
+  }
+
   const againBtn = h('button.btn.btn-red.btn-huge', { type: 'button', onclick: () => playAgain(true) }, 'Play Again (same players)');
   const newBtn = h('button.btn.btn-ghost.btn-wide', { type: 'button', onclick: () => playAgain(false) }, 'New Game');
 
@@ -944,7 +954,7 @@ function gameOverScreen(s) {
       {},
       h(
         'div.champion',
-        {},
+        { class: highlights.length > 0 ? 'has-highlights' : '' },
         h('p.round-badge', {}, tie ? "It's a tie!" : 'And the winner is…'),
         h(
           'div.champ-row',
@@ -960,6 +970,7 @@ function gameOverScreen(s) {
           ),
         ),
         h('p.champ-score', {}, `${standings[0].score.toLocaleString()} points`),
+        highlights.length > 0 ? highlightSlot : null,
       ),
       h(
         'div.over-side',
@@ -982,6 +993,30 @@ function gameOverScreen(s) {
       ),
     ),
   };
+}
+
+const HIGHLIGHT_MS = 5000;
+const ROUND_LABELS = { 1: 'Round 1', 2: 'Round 2', 3: 'Final round' };
+
+/** One "best of the night" / "tough crowd" card for the winner screen. */
+function highlightCard(s, item, i, n) {
+  const best = item.type === 'best';
+  const label = best
+    ? (item.sweep ? '🧹 Clean Sweep!' : '⭐ Best of the night')
+    : (item.votes === 0 ? '🦗 Zero votes' : '🍅 Tough crowd');
+  const votes = item.round === 3
+    ? `${item.votes} vote${item.votes === 1 ? '' : 's'}`
+    : `${item.votes} of ${item.totalVotes} votes`;
+  const author = playerById(s, item.authorId);
+
+  return h(
+    'article.highlight.paper',
+    { class: best ? 'is-best' : 'is-worst' },
+    h('div.highlight-head', {}, h('span.highlight-label', {}, label), h('span.highlight-count', {}, `${i + 1} / ${n}`)),
+    h('p.highlight-prompt', {}, h('span.highlight-round', {}, ROUND_LABELS[item.round]), item.promptText),
+    h('p.highlight-text', {}, item.text),
+    h('div.highlight-footer', {}, author ? playerTag(author) : null, h('span.highlight-votes', {}, votes)),
+  );
 }
 
 // ---------------------------------------------------------------------------
