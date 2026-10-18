@@ -1006,7 +1006,7 @@ function highlightCard(s, item, i, n) {
     : (item.votes === 0 ? '🦗 Zero votes' : '🍅 Tough crowd');
   const votes = item.round === 3
     ? `${item.votes} vote${item.votes === 1 ? '' : 's'}`
-    : `${item.votes} of ${item.totalVotes} votes`;
+    : `${item.votes} of ${item.totalVotes} vote${item.totalVotes === 1 ? '' : 's'}`;
   const author = playerById(s, item.authorId);
 
   return h(

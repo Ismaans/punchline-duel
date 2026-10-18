@@ -1482,6 +1482,11 @@ body.host {
   font-family: var(--font-display);
 }
 
+/* Some player colours (yellow, lime) are unreadable on paper. */
+.highlight .player-tag-name {
+  color: var(--ink);
+}
+
 @keyframes highlight-in {
   from {
     opacity: 0;
