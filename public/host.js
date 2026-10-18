@@ -14,7 +14,7 @@ import { LIMITS, NO_ANSWER_TEXT, PHASES as P } from './shared/constants.js';
 import { connect, request } from './shared/connection.js';
 import { avatar, fill, h, playerById, playerTag, toast } from './shared/dom.js';
 import { progress, secondsLeft, syncClock } from './shared/clock.js';
-import { isMuted, setMuted, sounds, unlockAudio } from './shared/sound.js';
+import { isMuted, playMusic, setMuted, sounds, stopMusic, unlockAudio } from './shared/sound.js';
 import { confetti, confettiCannons } from './shared/confetti.js';
 
 const HOST_KEY = 'pd-host'; // { roomCode, hostToken, fast }
@@ -67,6 +67,8 @@ socket.on(EVENTS.ERROR, ({ message, code }) => {
   }
   if (code === 'REPLACED') {
     state = null;
+    musicKey = null;
+    stopMusic();
     mount('replaced', replacedScreen);
     return;
   }
@@ -106,6 +108,7 @@ function render() {
   document.body.dataset.phase = state.phase;
   renderBar();
   renderRoster();
+  renderMusic();
   const [key, build] = pickScreen(state);
   mount(key, build);
 }
@@ -245,6 +248,46 @@ setInterval(() => {
 function isWaitingStep(s) {
   if (s.phase === P.ROUND1_VOTE || s.phase === P.ROUND2_VOTE) return s.vote.step === 'vote';
   return [P.ROUND1_ANSWER, P.ROUND2_ANSWER, P.FINAL_ANSWER, P.FINAL_VOTE].includes(s.phase);
+}
+
+// ---------------------------------------------------------------------------
+// Background music: one track per phase. A round's voting track keeps playing
+// across all of its matchups.
+// ---------------------------------------------------------------------------
+
+let musicKey = null;
+
+function renderMusic() {
+  const key = `${state.phase}-${state.gameNumber}`;
+  if (key === musicKey) return;
+  musicKey = key;
+  switch (state.phase) {
+    case P.LOBBY:
+      return playMusic('music_lobby');
+    case P.INTRO:
+      return playMusic('music_intro', { loop: false });
+    case P.ROUND1_ANSWER:
+      return playMusic('music_write_r1');
+    case P.ROUND1_VOTE:
+      return playMusic('music_vote_r1');
+    case P.ROUND2_ANSWER:
+      return playMusic('music_write_r2');
+    case P.ROUND2_VOTE:
+      return playMusic('music_vote_r2');
+    case P.ROUND1_SCORES:
+    case P.ROUND2_SCORES:
+      return playMusic('music_scores', { loop: false });
+    case P.FINAL_ANSWER:
+      return playMusic('music_write_final');
+    case P.FINAL_VOTE:
+      return playMusic('music_vote_final');
+    case P.FINAL_RESULTS:
+      return playMusic('music_final_reveal');
+    case P.GAME_OVER:
+      return playMusic('music_winner_fanfare', { loop: false, then: 'music_winner_loop' });
+    default:
+      return stopMusic();
+  }
 }
 
 // ---------------------------------------------------------------------------

@@ -1,8 +1,12 @@
 /**
- * shared/sound.js — every sound effect, generated in code with the Web Audio API.
+ * shared/sound.js — sound effects and background music.
  *
- * No audio files: each sound is built from oscillators (pure tones) and
- * filtered noise, shaped with a quick volume "envelope" so it doesn't click.
+ * Sound effects are generated in code with the Web Audio API: each one is
+ * built from oscillators (pure tones) and filtered noise, shaped with a quick
+ * volume "envelope" so it doesn't click.
+ *
+ * Music is MP3 files in /audio, played with <audio> elements (see the bottom
+ * of this file). Only the host screen plays music.
  *
  * Browsers block audio until the user taps or clicks something, so pages
  * call unlockAudio() from their first interaction.
@@ -29,6 +33,8 @@ function audio() {
 /** Call from a click/tap handler so later sounds are allowed to play. */
 export function unlockAudio() {
   audio();
+  // Music that tried to start before the first interaction was blocked; start it now.
+  if (track && track.el.paused && !track.el.ended) track.el.play().catch(() => {});
 }
 
 export function isMuted() {
@@ -38,6 +44,7 @@ export function isMuted() {
 export function setMuted(value) {
   muted = value;
   localStorage.setItem(MUTE_KEY, value ? '1' : '0');
+  if (track) track.el.muted = value;
 }
 
 /**
@@ -155,3 +162,47 @@ export const sounds = {
     tone({ freq: 180, slideTo: 120, duration: 0.25, type: 'square', volume: 0.12 });
   },
 };
+
+// ---------------------------------------------------------------------------
+// Music. <audio> elements stream the file, so a 3-minute track is never
+// decoded into memory all at once (Web Audio buffers would be ~60 MB each).
+// ---------------------------------------------------------------------------
+
+const MUSIC_VOLUME = 0.35; // keeps the music under the sound effects
+const MUSIC_FADE_MS = 400;
+let track = null; // { name, el } — the music that's playing (or waiting to be unlocked)
+
+/**
+ * Starts a music track from /audio, fading out whatever was playing.
+ * @param name  file name without ".mp3"
+ * @param loop  false for one-shot tracks
+ * @param then  a track to loop once this one-shot finishes
+ */
+export function playMusic(name, { loop = true, then = null } = {}) {
+  stopMusic();
+  const el = new Audio(`/audio/${name}.mp3`);
+  el.loop = loop;
+  el.volume = MUSIC_VOLUME;
+  el.muted = muted;
+  if (then) {
+    el.addEventListener('ended', () => {
+      if (track?.el === el) playMusic(then);
+    });
+  }
+  track = { name, el };
+  el.play().catch(() => {}); // blocked until the first tap or click; unlockAudio() retries
+}
+
+export function stopMusic() {
+  if (!track) return;
+  const { el } = track;
+  track = null;
+  const step = el.volume / (MUSIC_FADE_MS / 50);
+  const timer = setInterval(() => {
+    el.volume = Math.max(0, el.volume - step);
+    if (el.volume === 0) {
+      clearInterval(timer);
+      el.pause();
+    }
+  }, 50);
+}

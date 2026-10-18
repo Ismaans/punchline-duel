@@ -172,6 +172,7 @@ server/
 public/
   play.html/js/css   Phone controller (served at /)
   host.html/js/css   Big screen (served at /host)
+  audio/             Background music (MP3s), played only on the big screen
   shared/            Code used by both pages (and some by the server):
                      event names, constants, DOM helpers, sounds, confetti
 scripts/bots.js      Fake players for testing
