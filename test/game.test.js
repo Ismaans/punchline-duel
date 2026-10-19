@@ -13,6 +13,8 @@ import {
   assignPrompts,
   canTransition,
   createGameState,
+  HIGHLIGHTS,
+  pickHighlights,
   scoreMatchup,
   standings,
   validateFinalVote,
@@ -324,6 +326,187 @@ describe('phase transitions', () => {
 
     const lobby = must(state, { type: 'playAgain', samePlayers: false });
     assert.equal(lobby.phase, P.LOBBY);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Winner screen highlights
+// ---------------------------------------------------------------------------
+
+describe('winner screen highlights', () => {
+  let n = 0;
+  /** One answerHistory entry; defaults to a 3-1 normal win in Round 1. */
+  const entry = (over = {}) => ({
+    round: 1,
+    promptText: `prompt ${n}`,
+    text: `answer ${n++}`,
+    authorId: 'p0',
+    votes: 3,
+    totalVotes: 4,
+    kind: 'normal',
+    sweep: false,
+    ...over,
+  });
+  /** Both sides of one Round 1/2 matchup. */
+  const matchup = (round, [a, b], [va, vb], extra = {}) => [
+    entry({ round, authorId: a, votes: va, totalVotes: va + vb, sweep: vb === 0, ...extra }),
+    entry({ round, authorId: b, votes: vb, totalVotes: va + vb, sweep: va === 0, ...extra }),
+  ];
+  const PLAYERS = ['p0', 'p1', 'p2', 'p3'];
+
+  test('an empty history gives no highlights', () => {
+    assert.deepEqual(pickHighlights([], PLAYERS), []);
+  });
+
+  test('Mind Melds, forfeits and matchups with no votes are never shown', () => {
+    const history = [
+      ...matchup(1, ['p0', 'p1'], [0, 0], { kind: 'mindmeld' }),
+      entry({ authorId: 'p2', votes: 0, totalVotes: 0, kind: 'forfeit' }),
+      ...matchup(1, ['p2', 'p3'], [0, 0], { kind: 'novotes' }),
+    ];
+    assert.deepEqual(pickHighlights(history, PLAYERS), []);
+  });
+
+  test('a single matchup gives one best and one worst', () => {
+    const history = matchup(1, ['p0', 'p1'], [3, 1]);
+    const picks = pickHighlights(history, PLAYERS);
+    assert.deepEqual(picks.map((p) => [p.type, p.authorId]), [['best', 'p0'], ['worst', 'p1']]);
+    assert.equal(picks[0].votes, 3);
+    assert.equal(picks[0].totalVotes, 4);
+    assert.equal(picks[0].promptText, history[0].promptText);
+  });
+
+  test('a tied matchup is neither best nor worst', () => {
+    assert.deepEqual(pickHighlights(matchup(1, ['p0', 'p1'], [2, 2]), PLAYERS), []);
+  });
+
+  test('Clean Sweeps lead the best list and zero-vote answers lead the worst list', () => {
+    const history = [
+      ...matchup(1, ['p0', 'p1'], [3, 1]),
+      ...matchup(1, ['p2', 'p3'], [4, 0]),
+    ];
+    const picks = pickHighlights(history, PLAYERS);
+    assert.equal(picks[0].type, 'best');
+    assert.equal(picks[0].authorId, 'p2');
+    assert.equal(picks[0].sweep, true);
+    assert.equal(picks[1].type, 'worst');
+    assert.equal(picks[1].authorId, 'p3');
+    assert.equal(picks[1].votes, 0);
+  });
+
+  test('best and worst alternate, and no answer is picked twice', () => {
+    const history = [
+      ...matchup(1, ['p0', 'p1'], [3, 1]),
+      ...matchup(1, ['p2', 'p3'], [4, 0]),
+      ...matchup(2, ['p0', 'p2'], [1, 3]),
+      ...matchup(2, ['p1', 'p3'], [2, 1]),
+    ];
+    const picks = pickHighlights(history, PLAYERS);
+    picks.forEach((p, i) => assert.equal(p.type, i % 2 === 0 ? 'best' : 'worst'));
+    const texts = picks.map((p) => p.text);
+    assert.equal(new Set(texts).size, texts.length);
+  });
+
+  test('every round is represented when it has a winner and a loser', () => {
+    // Round 1 has the most lopsided results, so ranking alone would skip rounds 2 and 3.
+    const history = [
+      ...matchup(1, ['p0', 'p1'], [4, 0]),
+      ...matchup(1, ['p2', 'p3'], [4, 0]),
+      ...matchup(1, ['p1', 'p2'], [4, 0]),
+      ...matchup(1, ['p3', 'p0'], [4, 0]),
+      ...matchup(2, ['p0', 'p1'], [3, 1]),
+      entry({ round: 3, authorId: 'p2', votes: 6, totalVotes: 12, kind: 'final' }),
+      entry({ round: 3, authorId: 'p1', votes: 4, totalVotes: 12, kind: 'final' }),
+      entry({ round: 3, authorId: 'p0', votes: 2, totalVotes: 12, kind: 'final' }),
+      entry({ round: 3, authorId: 'p3', votes: 0, totalVotes: 12, kind: 'final' }),
+    ];
+    const picks = pickHighlights(history, PLAYERS);
+    for (const type of ['best', 'worst']) {
+      const rounds = new Set(picks.filter((p) => p.type === type).map((p) => p.round));
+      assert.deepEqual([...rounds].sort(), [1, 2, 3], `${type} covers all rounds`);
+    }
+    const finalBest = picks.find((p) => p.type === 'best' && p.round === 3);
+    assert.equal(finalBest.authorId, 'p2', 'only the top final answer counts as best');
+  });
+
+  test('at most PER_TYPE of each type and PER_AUTHOR per player', () => {
+    // p0 wins everything, so without the cap every best card would be theirs.
+    const history = [];
+    for (let i = 0; i < 6; i++) history.push(...matchup(1 + (i % 2), ['p0', PLAYERS[1 + (i % 3)]], [4, 0]));
+    const picks = pickHighlights(history, PLAYERS);
+    const best = picks.filter((p) => p.type === 'best');
+    const worst = picks.filter((p) => p.type === 'worst');
+    assert.equal(best.length, HIGHLIGHTS.PER_AUTHOR, 'only p0 won, so the cap limits the best list');
+    assert.equal(worst.length, HIGHLIGHTS.PER_TYPE);
+    for (const list of [best, worst]) {
+      const counts = {};
+      for (const p of list) counts[p.authorId] = (counts[p.authorId] ?? 0) + 1;
+      assert.ok(Object.values(counts).every((c) => c <= HIGHLIGHTS.PER_AUTHOR));
+    }
+  });
+
+  test('players who left are skipped', () => {
+    const history = matchup(1, ['p0', 'p1'], [3, 1]);
+    const picks = pickHighlights(history, ['p1', 'p2', 'p3']);
+    assert.deepEqual(picks.map((p) => [p.type, p.authorId]), [['worst', 'p1']]);
+  });
+
+  test('a real game records every round, only the host gets highlights, and a new game clears them', () => {
+    let state = roundOneWith(4);
+    let guard = 0;
+    while (state.phase !== P.GAME_OVER && guard++ < 300) {
+      if (state.phase === P.ROUND1_ANSWER || state.phase === P.ROUND2_ANSWER) {
+        // p3 never answers, so their matchups are forfeits.
+        for (const prompt of state.round.prompts) {
+          for (const playerId of prompt.playerIds.filter((id) => id !== 'p3')) {
+            state = must(state, { type: 'answer', playerId, promptId: prompt.id, text: `${playerId} on ${prompt.id}` });
+          }
+        }
+        state = advance(state);
+      } else if (state.phase === P.ROUND1_VOTE || state.phase === P.ROUND2_VOTE) {
+        const m = currentMatchup(state);
+        if (state.round.step === 'vote') {
+          for (const voter of state.players.filter((p) => !m.authorIds.includes(p.id))) {
+            const r = applyAction(state, { type: 'vote', playerId: voter.id, matchupId: m.id, choice: 0 }, makeCtx());
+            if (r.ok) state = r.state;
+          }
+        }
+        if (state.phase.endsWith('_VOTE')) state = advance(state);
+      } else if (state.phase === P.FINAL_ANSWER) {
+        for (const p of state.players) {
+          if (p.id === 'p3') continue;
+          state = must(state, { type: 'answer', playerId: p.id, promptId: state.final.prompt.id, text: `final ${p.id}` });
+        }
+        if (state.phase === P.FINAL_ANSWER) state = advance(state);
+      } else if (state.phase === P.FINAL_VOTE) {
+        const target = state.final.ballot.find((b) => b.authorId === 'p0');
+        const other = state.final.ballot.find((b) => b.authorId === 'p1');
+        for (const p of state.players) {
+          const id = p.id === 'p0' ? other.id : target.id;
+          state = must(state, { type: 'finalVote', playerId: p.id, answerIds: [id, id, id] });
+        }
+      } else {
+        state = advance(state);
+      }
+    }
+    assert.equal(state.phase, P.GAME_OVER);
+
+    const rounds = new Set(state.answerHistory.map((e) => e.round));
+    assert.deepEqual([...rounds].sort(), [1, 2, 3]);
+    assert.ok(state.answerHistory.every((e) => e.text !== null), 'missing answers are not recorded');
+
+    const host = viewFor(state, { role: 'host' });
+    const highlights = host.gameOver.highlights;
+    assert.ok(highlights.length > 0);
+    assert.ok(highlights.every((h) => h.authorId !== 'p3'), 'p3 never answered, so never appears');
+    assert.ok(new Set(highlights.map((h) => h.round)).size > 1, 'more than one round is shown');
+    assert.equal(host.gameOver.standings.length, 4, 'standings are unchanged');
+
+    const phone = viewFor(state, { role: 'player', playerId: 'p0' });
+    assert.deepEqual(phone.gameOver.highlights, []);
+
+    assert.deepEqual(must(state, { type: 'playAgain', samePlayers: true }).answerHistory, []);
+    assert.deepEqual(must(state, { type: 'playAgain', samePlayers: false }).answerHistory, []);
   });
 });
 
