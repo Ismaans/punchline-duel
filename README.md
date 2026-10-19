@@ -187,3 +187,7 @@ the reveal). All socket event names live in `public/shared/events.js`.
 To add prompts, edit `server/prompts.json`. Each needs a unique `id`, the `text`
 (use `_____` for the blank), and `"final": true` or `false`. Hosts can also type
 custom prompts into the lobby before a game; those are used first.
+
+`server/prompts-quiplash.json` holds round 1/2 prompts imported from Jackbox's
+Quiplash games (© Jackbox Games). It's built by `node scripts/import-quiplash-prompts.js`.
+Set `QUIPLASH_PROMPTS=off` to leave them out, or delete the file to remove them.

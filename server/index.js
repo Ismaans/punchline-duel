@@ -8,7 +8,7 @@
  */
 
 import express from 'express';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { networkInterfaces } from 'node:os';
 import path from 'node:path';
@@ -455,13 +455,22 @@ setInterval(() => {
   for (const { code, reason } of findExpiredRooms()) closeRoom(code, reason);
 }, ROOM_TIMEOUTS.CLEANUP_INTERVAL_MS);
 
+/**
+ * Our own prompts, plus the imported Quiplash prompts (see
+ * scripts/import-quiplash-prompts.js) unless QUIPLASH_PROMPTS=off or the
+ * file has been deleted.
+ */
 function loadPrompts() {
-  const file = path.join(__dirname, 'prompts.json');
-  const prompts = JSON.parse(readFileSync(file, 'utf8'));
+  const read = (name) => JSON.parse(readFileSync(path.join(__dirname, name), 'utf8'));
+  const prompts = read('prompts.json');
+  const quiplashFile = path.join(__dirname, 'prompts-quiplash.json');
+  if (process.env.QUIPLASH_PROMPTS !== 'off' && existsSync(quiplashFile)) {
+    prompts.push(...read('prompts-quiplash.json').prompts);
+  }
   const ids = new Set();
   for (const p of prompts) {
     if (typeof p.id !== 'string' || typeof p.text !== 'string' || ids.has(p.id)) {
-      throw new Error(`Bad or duplicate prompt in prompts.json: ${JSON.stringify(p)}`);
+      throw new Error(`Bad or duplicate prompt: ${JSON.stringify(p)}`);
     }
     ids.add(p.id);
   }
